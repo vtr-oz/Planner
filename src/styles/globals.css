@@ -1,0 +1,108 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #cccccc; /* Um fundo neutro atrás do Planner */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ajuste fino para os ícones ficarem bem alinhados com o texto */
+i[class^="ti-"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+textarea {
+  font-family: var(--font-sans);
+}
+
+/* --- RESPONSIVIDADE E LAYOUT --- */
+.app-layout {
+  display: flex;
+  height: 100vh; /* Ocupa 100% da tela visível (ótimo para mobile) */
+  width: 100vw;
+  font-family: var(--font-sans);
+  background: var(--color-background-tertiary);
+  overflow: hidden;
+}
+
+/* Sidebar padrão (Desktop) */
+.sidebar-container {
+  width: 240px;
+  background: var(--color-background-secondary);
+  border-right: 0.5px solid var(--color-border-tertiary);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+
+/* Painel de detalhes da tarefa padrão (Desktop) */
+.task-detail-panel {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--color-background-primary);
+  border-left: 0.5px solid var(--color-border-tertiary);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+/* Esconde o botão de hambúrguer no Desktop */
+.mobile-toggle-btn {
+  display: none;
+}
+
+/* --- REGRAS PARA CELULAR (Telas menores que 768px) --- */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .mobile-toggle-btn {
+    display: flex;
+    background: none;
+    border: none;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    padding: 4px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* A Sidebar vira uma gaveta flutuante (Off-canvas) */
+  .sidebar-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transform: translateX(-100%); /* Fica escondida para fora da tela */
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Classe ativada pelo React quando clicamos no botão */
+  .sidebar-container.open {
+    transform: translateX(0); /* Desliza para dentro da tela */
+  }
+
+  /* O Painel da Tarefa cobre a tela toda no celular */
+  .task-detail-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+}
