@@ -10,7 +10,8 @@ export default function Board({
   createTask, 
   createBucket, 
   updateBucketName,
-  moveTask // <--- RECEBEU DO PLANNER AQUI EM CIMA
+  moveTask,
+  toggleSubtask /* <--- RECEBEU DO PLANNER */
 }) {
   const [addingBucket, setAddingBucket] = useState(false);
   const [newBucketName, setNewBucketName] = useState('');
@@ -34,7 +35,8 @@ export default function Board({
           deleteBucket={deleteBucket}
           createTask={createTask}
           updateBucketName={updateBucketName}
-          moveTask={moveTask} /* <--- REPASSOU PRO BUCKET AQUI! */
+          moveTask={moveTask}
+          toggleSubtask={toggleSubtask} /* <--- PONTE 2: REPASSOU PRO BUCKET */
         />
       ))}
 

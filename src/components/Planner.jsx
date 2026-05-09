@@ -7,7 +7,7 @@ import TaskDetail from "./TaskDetail";
 export default function Planner() {
   const planner = usePlanner();
   const [selectedTask, setSelectedTask] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // NOVO ESTADO AQUI
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const getSelected = () => {
     if (!selectedTask) return null;
@@ -22,7 +22,6 @@ export default function Planner() {
   return (
     <div className="app-layout">
       
-      {/* Overlay escuro quando a sidebar abre no mobile */}
       {isSidebarOpen && (
         <div 
           onClick={() => setIsSidebarOpen(false)} 
@@ -38,15 +37,14 @@ export default function Planner() {
         updatePlanName={planner.updatePlanName}
         deletePlan={planner.deletePlan}
         setSelectedTask={setSelectedTask}
-        isOpen={isSidebarOpen}           // PASSA O ESTADO
-        setIsOpen={setIsSidebarOpen}     // PASSA A FUNÇÃO
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         
         <div style={{ padding: '12px 20px', borderBottom: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
           
-          {/* Botão de Hambúrguer (Aparece só no celular) */}
           <button className="mobile-toggle-btn" onClick={() => setIsSidebarOpen(true)}>
             <i className="ti ti-menu-2" style={{ fontSize: '20px' }} />
           </button>
@@ -71,6 +69,7 @@ export default function Planner() {
             createBucket={planner.createBucket}
             updateBucketName={planner.updateBucketName}
             moveTask={planner.moveTask}
+            toggleSubtask={planner.toggleSubtask} /* <--- PONTE 1: ADICIONADO */
           />
 
           {sel && (

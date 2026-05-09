@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import TaskCard from './TaskCard';
 
-export default function Bucket({ bucket, selectedTask, setSelectedTask, toggleTask, deleteBucket, createTask, updateBucketName, moveTask }) {
+export default function Bucket({ bucket, selectedTask, setSelectedTask, toggleTask, deleteBucket, createTask, updateBucketName, moveTask, toggleSubtask }) {
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -17,25 +17,20 @@ export default function Bucket({ bucket, selectedTask, setSelectedTask, toggleTa
   return (
     <div 
       style={{ width: '268px', flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' }}
-      // --- INÍCIO DA ADIÇÃO DO DRAG AND DROP ---
-      onDragOver={(e) => e.preventDefault()} // Impede o comportamento padrão para permitir soltar o item aqui
+      onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         const taskId = e.dataTransfer.getData('taskId');
         const sourceBucketId = e.dataTransfer.getData('sourceBucketId');
-        
-        // Verifica se a tarefa veio de OUTRO bucket para não re-renderizar à toa
         if (sourceBucketId !== String(bucket.id)) {
           moveTask(sourceBucketId, bucket.id, taskId);
         }
       }}
-      // --- FIM DA ADIÇÃO DO DRAG AND DROP ---
     >
       
       {/* Bucket header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '10px', padding: '0 2px' }}>
         <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: bucket.color, flexShrink: 0 }} />
         
-        {/* Bloco de renomear */}
         {isEditingName ? (
           <input
             autoFocus
@@ -77,6 +72,7 @@ export default function Bucket({ bucket, selectedTask, setSelectedTask, toggleTa
             selectedTask={selectedTask} 
             setSelectedTask={setSelectedTask} 
             toggleTask={toggleTask} 
+            toggleSubtask={toggleSubtask} /* <--- PONTE 3: REPASSOU PRO TASKCARD */
           />
         ))}
 
