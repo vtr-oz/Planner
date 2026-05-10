@@ -1,143 +1,191 @@
-import { useState, useEffect } from "react";
-import { INITIAL, uid, BUCKET_COLORS } from "../data/initialData";
+import { useState, useEffect } from 'react';
+import { INITIAL, uid as genId } from '../data/initialData';
+import { db } from '../config/firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
-export function usePlanner() {
-  // Carrega do localStorage ao iniciar, ou usa o INITIAL
-  const [state, setState] = useState(() => {
-    const saved = localStorage.getItem('planner_data');
-    return saved ? JSON.parse(saved) : INITIAL;
-  });
+export function usePlanner(userId) {
+  const [state, setState] = useState(INITIAL);
+  const [loading, setLoading] = useState(true);
 
-  // Salva no localStorage toda vez que o estado mudar
+  // 1. OUVIR A NUVEM EM TEMPO REAL
   useEffect(() => {
-    localStorage.setItem('planner_data', JSON.stringify(state));
-  }, [state]);
+    if (!userId) return;
 
-  const activePlan = state.plans.find(p => p.id === state.activePlanId);
+    // Referência à gaveta deste utilizador no banco de dados
+    const docRef = doc(db, 'planners', userId);
 
-  const setActivePlanId = (id) => {
-    setState(s => ({ ...s, activePlanId: id }));
+    // onSnapshot fica a "escutar" mudanças 24h por dia
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setState(docSnap.data()); // Atualiza o ecrã com o que vem da nuvem
+      } else {
+        // Primeira vez do utilizador! Salva o quadro padrão (INITIAL)
+        setDoc(docRef, INITIAL);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe(); // Limpa a escuta ao fechar a aba
+  }, [userId]);
+
+  // 2. FUNÇÃO MESTRA PARA SALVAR NA NUVEM
+  const updateData = (recipe) => {
+    setState(prev => {
+      const newState = recipe(prev);
+      if (userId) {
+        // Guarda silenciosamente no Firebase em segundo plano
+        setDoc(doc(db, 'planners', userId), newState).catch(err => console.error("Erro Firebase:", err));
+      }
+      return newState;
+    });
   };
 
-  const updatePlan = (planId, fn) =>
-    setState(s => ({ ...s, plans: s.plans.map(p => p.id === planId ? fn(p) : p) }));
+  const activePlan = state.plans?.find(p => p.id === state.activePlanId) || state.plans?.[0];
 
-  const updateBuckets = fn =>
-    updatePlan(state.activePlanId, p => ({ ...p, buckets: fn(p.buckets) }));
+  // Helper para atualizar apenas o plano ativo
+  const updateActivePlan = (s, planRecipe) => ({
+    ...s,
+    plans: s.plans.map(p => p.id === s.activePlanId ? planRecipe(p) : p)
+  });
+
+  // --- A PARTIR DAQUI, AS FUNÇÕES SÃO AS MESMAS, MAS USAM O "updateData" ---
+
+  const setActivePlanId = (id) => updateData(s => ({ ...s, activePlanId: id }));
 
   const createPlan = (name) => {
     if (!name.trim()) return;
-    const id = uid();
-    setState(s => ({ ...s, plans: [...s.plans, { id, name, buckets: [] }], activePlanId: id }));
+    updateData(s => {
+      const newPlan = { id: genId(), name, buckets: [] };
+      return { ...s, plans: [...s.plans, newPlan], activePlanId: newPlan.id };
+    });
   };
 
-  const updatePlanName = (planId, name) => {
-    if (!name.trim()) return;
-    updatePlan(planId, p => ({ ...p, name }));
+  const updatePlanName = (planId, newName) => {
+    if (!newName.trim()) return;
+    updateData(s => ({ ...s, plans: s.plans.map(p => p.id === planId ? { ...p, name: newName } : p) }));
   };
 
   const deletePlan = (planId) => {
-    setState(s => {
-      // Remove o plano da lista
+    updateData(s => {
       const newPlans = s.plans.filter(p => p.id !== planId);
-      
-      // Se apagarmos o plano que está aberto, precisamos de mudar para outro
       let nextActiveId = s.activePlanId;
       if (s.activePlanId === planId) {
         nextActiveId = newPlans.length > 0 ? newPlans[0].id : null;
       }
-      
       return { ...s, plans: newPlans, activePlanId: nextActiveId };
     });
   };
 
   const createBucket = (name) => {
     if (!name.trim()) return;
-    const id = uid();
-    updateBuckets(bs => [...bs, { id, name, color: BUCKET_COLORS[bs.length % BUCKET_COLORS.length], tasks: [] }]);
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: [...p.buckets, { id: genId(), name, color: '#3b82f6', tasks: [] }]
+    })));
   };
 
-  const updateBucketName = (bucketId, name) => {
-    if (!name.trim()) return;
-    updateBuckets(bs => bs.map(b => b.id === bucketId ? { ...b, name } : b));
+  const updateBucketName = (bucketId, newName) => {
+    if (!newName.trim()) return;
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? { ...b, name: newName } : b)
+    })));
+  };
+
+  const deleteBucket = (bucketId) => {
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.filter(b => b.id !== bucketId)
+    })));
   };
 
   const createTask = (bucketId, title) => {
     if (!title.trim()) return;
-    const id = uid();
-    updateBuckets(bs => bs.map(b => b.id === bucketId ? { ...b, tasks: [...b.tasks, { id, title, done: false, priority: 'medium', notes: '', dueDate: '', subtasks: [] }] } : b));
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
+        ...b, tasks: [...b.tasks, { id: genId(), title, priority: 'medium', done: false, subtasks: [], notes: '', dueDate: '' }]
+      } : b)
+    })));
   };
 
-  const moveTask = (sourceBucketId, targetBucketId, taskId) => {
-    // Evita rodar código se soltar no mesmo lugar
-    if (sourceBucketId === targetBucketId) return;
-
-    updateBuckets(bs => {
-      let movedTask = null;
-      
-      // 1. Tira a tarefa do bucket de origem
-      const bsWithoutTask = bs.map(b => {
-        if (b.id == sourceBucketId) {
-          movedTask = b.tasks.find(t => t.id == taskId);
-          return { ...b, tasks: b.tasks.filter(t => t.id != taskId) };
-        }
-        return b;
-      });
-
-      // 2. Coloca a tarefa no bucket de destino (se ela foi encontrada)
-      if (movedTask) {
-        return bsWithoutTask.map(b => {
-          if (b.id == targetBucketId) {
-            return { ...b, tasks: [...b.tasks, movedTask] };
-          }
-          return b;
-        });
-      }
-      return bsWithoutTask;
-    });
+  const updateTaskField = (bucketId, taskId, field, value) => {
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
+        ...b, tasks: b.tasks.map(t => t.id === taskId ? { ...t, [field]: value } : t)
+      } : b)
+    })));
   };
 
   const toggleTask = (bucketId, taskId, e) => {
-    e?.stopPropagation();
-    updateBuckets(bs => bs.map(b => b.id === bucketId ? { ...b, tasks: b.tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t) } : b));
+    if (e) e.stopPropagation();
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
+        ...b, tasks: b.tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t)
+      } : b)
+    })));
   };
 
   const deleteTask = (bucketId, taskId) => {
-    updateBuckets(bs => bs.map(b => b.id === bucketId ? { ...b, tasks: b.tasks.filter(t => t.id !== taskId) } : b));
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
+        ...b, tasks: b.tasks.filter(t => t.id !== taskId)
+      } : b)
+    })));
   };
 
-  const deleteBucket = (bucketId) => {
-    updateBuckets(bs => bs.filter(b => b.id !== bucketId));
+  const moveTask = (sourceBucketId, targetBucketId, taskId) => {
+    updateData(s => updateActivePlan(s, p => {
+      // Forçamos tudo a ser String para o Drag and Drop bater certo com a base de dados
+      const sourceIdStr = String(sourceBucketId);
+      const targetIdStr = String(targetBucketId);
+      const taskIdStr = String(taskId);
+
+      const sourceBucket = p.buckets.find(b => String(b.id) === sourceIdStr);
+      const taskToMove = sourceBucket?.tasks.find(t => String(t.id) === taskIdStr);
+      
+      if (!taskToMove) return p;
+
+      return {
+        ...p, buckets: p.buckets.map(b => {
+          if (String(b.id) === sourceIdStr) {
+            return { ...b, tasks: b.tasks.filter(t => String(t.id) !== taskIdStr) };
+          }
+          if (String(b.id) === targetIdStr) {
+            return { ...b, tasks: [...b.tasks, taskToMove] };
+          }
+          return b;
+        })
+      };
+    }));
   };
 
   const addSubtask = (bucketId, taskId, title) => {
     if (!title.trim()) return;
-    const id = uid();
-    updateBuckets(bs => bs.map(b => b.id === bucketId ? { ...b, tasks: b.tasks.map(t => t.id === taskId ? { ...t, subtasks: [...t.subtasks, { id, title, done: false }] } : t) } : b));
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
+        ...b, tasks: b.tasks.map(t => t.id === taskId ? {
+          ...t, subtasks: [...(t.subtasks || []), { id: genId(), title, done: false }]
+        } : t)
+      } : b)
+    })));
   };
 
-  const toggleSubtask = (bucketId, taskId, subId) =>
-    updateBuckets(bs => bs.map(b => b.id === bucketId ? { ...b, tasks: b.tasks.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.map(s => s.id === subId ? { ...s, done: !s.done } : s) } : t) } : b));
-
-  const updateTaskField = (bucketId, taskId, field, value) =>
-    updateBuckets(bs => bs.map(b => b.id === bucketId ? { ...b, tasks: b.tasks.map(t => t.id === taskId ? { ...t, [field]: value } : t) } : b));
+  const toggleSubtask = (bucketId, taskId, subtaskId, e) => {
+    if (e) e.stopPropagation();
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
+        ...b, tasks: b.tasks.map(t => t.id === taskId ? {
+          ...t, subtasks: (t.subtasks || []).map(sub => sub.id === subtaskId ? { ...sub, done: !sub.done } : sub)
+        } : t)
+      } : b)
+    })));
+  };
 
   return {
     state,
+    loading,
     activePlan,
     setActivePlanId,
-    createPlan,
-    updatePlanName,
-    deletePlan,
-    createBucket,
-    updateBucketName,
-    createTask,
-    toggleTask,
-    deleteTask,
-    deleteBucket,
-    addSubtask,
-    toggleSubtask,
-    updateTaskField,
-    moveTask
+    createPlan, updatePlanName, deletePlan,
+    createBucket, updateBucketName, deleteBucket,
+    createTask, updateTaskField, toggleTask, deleteTask, moveTask,
+    addSubtask, toggleSubtask
   };
 }

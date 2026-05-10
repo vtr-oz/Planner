@@ -6,10 +6,16 @@ import Sidebar from "./Sidebar";
 import Board from "./Board";
 import TaskDetail from "./TaskDetail";
 
-export default function Planner({ user }) { // <--- RECEBE O USER AQUI
-  const planner = usePlanner();
+export default function Planner({ user }) { 
+  // 1. Passamos o ID único do Google do utilizador para o hook
+  const planner = usePlanner(user.uid); 
   const [selectedTask, setSelectedTask] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // 2. Se a nuvem ainda estiver a descer os dados, mostramos esta mensagem
+  if (planner.loading) {
+    return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)', background: 'var(--color-background-tertiary)' }}>A sincronizar com a nuvem...</div>;
+  }
 
   const getSelected = () => {
     if (!selectedTask) return null;
