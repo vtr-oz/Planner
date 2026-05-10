@@ -1,8 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// A sua configuração exata
 const firebaseConfig = {
   apiKey: "AIzaSyAhzsETAh-zJ7jyvnt0Uogx5O7FRmZ6ktw",
   authDomain: "task-planner-pro-e3aa6.firebaseapp.com",
@@ -13,9 +12,8 @@ const firebaseConfig = {
   measurementId: "G-B1D9JQN3Q3"
 };
 
-// Inicializando os serviços
+// Inicializando os serviços uma única vez
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const googleProvider = new GoogleAuthProvider(); // <--- Crie o provedor aqui
+export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);

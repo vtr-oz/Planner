@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { usePlanner } from "../hooks/usePlanner";
+import { signOut } from "firebase/auth"; // <--- FUNÇÃO DE SAIR DO FIREBASE
+import { auth } from "../config/firebase"; // <--- NOSSA CONEXÃO
 import Sidebar from "./Sidebar";
 import Board from "./Board";
 import TaskDetail from "./TaskDetail";
 
-export default function Planner() {
+export default function Planner({ user }) { // <--- RECEBE O USER AQUI
   const planner = usePlanner();
   const [selectedTask, setSelectedTask] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -18,6 +20,13 @@ export default function Planner() {
 
   const sel = getSelected();
   const totalTasks = planner.activePlan?.buckets.reduce((s, b) => s + b.tasks.length, 0) || 0;
+
+  // Função para fazer logout
+  const handleLogout = () => {
+    if (window.confirm("Tem certeza que deseja sair da conta?")) {
+      signOut(auth);
+    }
+  };
 
   return (
     <div className="app-layout">
@@ -50,12 +59,32 @@ export default function Planner() {
           </button>
 
           <h1 style={{ margin: 0, fontSize: '15px', fontWeight: 500, color: 'var(--color-text-primary)', flex: 1 }}>{planner.activePlan?.name}</h1>
-          <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', background: 'var(--color-background-secondary)', padding: '2px 9px', borderRadius: '20px', border: '0.5px solid var(--color-border-tertiary)', display: 'flex', flexShrink: 0 }}>
+          
+          <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', background: 'var(--color-background-secondary)', padding: '2px 9px', borderRadius: '20px', border: '0.5px solid var(--color-border-tertiary)', display: 'flex', flexShrink: 0, display: 'none' }}>
+             {/* Escondido em mobile se precisar de espaço, mas mantido por agora */}
             {totalTasks} {totalTasks === 1 ? 'tarefa' : 'tarefas'}
           </span>
           <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', background: 'var(--color-background-secondary)', padding: '2px 9px', borderRadius: '20px', border: '0.5px solid var(--color-border-tertiary)', display: 'flex', flexShrink: 0 }}>
             {planner.activePlan?.buckets.length || 0} buckets
           </span>
+
+          {/* --- NOVO: INDICADOR DE PERFIL E BOTÃO DE SAIR --- */}
+          <div style={{ width: '1px', height: '20px', background: 'var(--color-border-tertiary)', margin: '0 5px' }} />
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="Perfil" title={user.displayName || user.email} style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--color-border-secondary)' }} />
+            ) : (
+              <div title={user?.email} style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'var(--color-background-info)', color: 'var(--color-text-info)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                {user?.email?.charAt(0).toUpperCase()}
+              </div>
+            )}
+            
+            <button onClick={handleLogout} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }} title="Sair da conta">
+              <i className="ti ti-logout" style={{ fontSize: '18px' }} />
+            </button>
+          </div>
+
         </div>
 
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -69,7 +98,7 @@ export default function Planner() {
             createBucket={planner.createBucket}
             updateBucketName={planner.updateBucketName}
             moveTask={planner.moveTask}
-            toggleSubtask={planner.toggleSubtask} /* <--- PONTE 1: ADICIONADO */
+            toggleSubtask={planner.toggleSubtask}
           />
 
           {sel && (
