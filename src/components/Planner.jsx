@@ -116,6 +116,8 @@ export default function Planner({ user }) {
               toggleSubtask={planner.toggleSubtask}
               addSubtask={planner.addSubtask}
               deleteTask={planner.deleteTask}
+              deleteSubtask={planner.deleteSubtask}
+              editSubtask={planner.editSubtask}
             />
           )}
         </div>

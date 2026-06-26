@@ -96,28 +96,46 @@ export function usePlanner(userId) {
     })));
   };
 
+  // TAREFAS AGORA NASCEM COM O STATUS 'NÃO INICIADO'
   const createTask = (bucketId, title) => {
     if (!title.trim()) return;
     updateData(s => updateActivePlan(s, p => ({
       ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
-        ...b, tasks: [...b.tasks, { id: genId(), title, priority: 'medium', done: false, subtasks: [], notes: '', dueDate: '' }]
+        ...b, tasks: [...b.tasks, { id: genId(), title, priority: 'medium', status: 'Não iniciado', done: false, subtasks: [], notes: '', dueDate: '' }]
       } : b)
     })));
   };
 
+  // SINCRONIZA A ESCOLHA MANUAL DO STATUS COM A CHECKBOX
   const updateTaskField = (bucketId, taskId, field, value) => {
     updateData(s => updateActivePlan(s, p => ({
       ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
-        ...b, tasks: b.tasks.map(t => t.id === taskId ? { ...t, [field]: value } : t)
+        ...b, tasks: b.tasks.map(t => {
+          if (t.id === taskId) {
+            let updates = { [field]: value };
+            if (field === 'status') {
+              updates.done = (value === 'Concluída');
+            }
+            return { ...t, ...updates };
+          }
+          return t;
+        })
       } : b)
     })));
   };
 
+  // SINCRONIZA A CHECKBOX COM O STATUS
   const toggleTask = (bucketId, taskId, e) => {
     if (e) e.stopPropagation();
     updateData(s => updateActivePlan(s, p => ({
       ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
-        ...b, tasks: b.tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t)
+        ...b, tasks: b.tasks.map(t => {
+          if (t.id === taskId) {
+            const isDone = !t.done;
+            return { ...t, done: isDone, status: isDone ? 'Concluída' : (t.status === 'Concluída' ? 'Não iniciado' : t.status) };
+          }
+          return t;
+        })
       } : b)
     })));
   };
@@ -132,7 +150,6 @@ export function usePlanner(userId) {
 
   const moveTask = (sourceBucketId, targetBucketId, taskId) => {
     updateData(s => updateActivePlan(s, p => {
-      // Forçamos tudo a ser String para o Drag and Drop bater certo com a base de dados
       const sourceIdStr = String(sourceBucketId);
       const targetIdStr = String(targetBucketId);
       const taskIdStr = String(taskId);
@@ -178,6 +195,29 @@ export function usePlanner(userId) {
     })));
   };
 
+  // --- NOVAS FUNÇÕES PARA SUBTAREFAS ---
+
+  const deleteSubtask = (bucketId, taskId, subtaskId) => {
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
+        ...b, tasks: b.tasks.map(t => t.id === taskId ? {
+          ...t, subtasks: (t.subtasks || []).filter(sub => sub.id !== subtaskId)
+        } : t)
+      } : b)
+    })));
+  };
+
+  const editSubtask = (bucketId, taskId, subtaskId, newTitle) => {
+    if (!newTitle.trim()) return;
+    updateData(s => updateActivePlan(s, p => ({
+      ...p, buckets: p.buckets.map(b => b.id === bucketId ? {
+        ...b, tasks: b.tasks.map(t => t.id === taskId ? {
+          ...t, subtasks: (t.subtasks || []).map(sub => sub.id === subtaskId ? { ...sub, title: newTitle } : sub)
+        } : t)
+      } : b)
+    })));
+  };
+
   return {
     state,
     loading,
@@ -186,6 +226,7 @@ export function usePlanner(userId) {
     createPlan, updatePlanName, deletePlan,
     createBucket, updateBucketName, deleteBucket,
     createTask, updateTaskField, toggleTask, deleteTask, moveTask,
-    addSubtask, toggleSubtask
+    addSubtask, toggleSubtask,
+    deleteSubtask, editSubtask
   };
 }
