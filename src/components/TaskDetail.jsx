@@ -36,13 +36,19 @@ export default function TaskDetail({ sel, setSelectedTask, toggleTask, updateTas
         </button>
       </div>
 
-      {/* Status toggle principal */}
+      {/* Status Select */}
       <div style={{ padding: '12px 14px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-        <button onClick={() => toggleTask(sel.bucket.id, sel.task.id)}
-          style={{ width: '100%', padding: '7px', borderRadius: 'var(--border-radius-md)', border: `1.5px solid ${sel.task.done ? sel.bucket.color : 'var(--color-border-secondary)'}`, background: sel.task.done ? sel.bucket.color + '18' : 'transparent', color: sel.task.done ? sel.bucket.color : 'var(--color-text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '13px', fontWeight: 500 }}>
-          <i className={`ti ti-${sel.task.done ? 'circle-check-filled' : 'circle'}`} style={{ fontSize: '16px' }} aria-hidden="true" />
-          {sel.task.done ? 'Concluída' : 'Marcar como concluída'}
-        </button>
+        <p style={{ margin: '0 0 7px', fontSize: '11px', fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</p>
+        <select 
+          value={sel.task.status || 'Não iniciado'} 
+          onChange={(e) => updateTaskField(sel.bucket.id, sel.task.id, 'status', e.target.value)}
+          style={{ width: '100%', padding: '8px', fontSize: '12px', borderRadius: 'var(--border-radius-md)', border: '0.5px solid var(--color-border-secondary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', outline: 'none' }}
+        >
+          <option value="Não iniciado">Não iniciado</option>
+          <option value="Em andamento">Em andamento</option>
+          <option value="Aguardando">Aguardando</option>
+          <option value="Concluída">Concluída</option>
+        </select>
       </div>
 
       {/* DATA DE CONCLUSÃO */}
@@ -67,21 +73,6 @@ export default function TaskDetail({ sel, setSelectedTask, toggleTask, updateTas
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Status Select */}
-      <div style={{ padding: '12px 14px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-        <p style={{ margin: '0 0 7px', fontSize: '11px', fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</p>
-        <select 
-          value={sel.task.status || 'Não iniciado'} 
-          onChange={(e) => updateTaskField(sel.bucket.id, sel.task.id, 'status', e.target.value)}
-          style={{ width: '100%', padding: '8px', fontSize: '12px', borderRadius: 'var(--border-radius-md)', border: '0.5px solid var(--color-border-secondary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', outline: 'none' }}
-        >
-          <option value="Não iniciado">Não iniciado</option>
-          <option value="Em andamento">Em andamento</option>
-          <option value="Aguardando">Aguardando</option>
-          <option value="Concluída">Concluída</option>
-        </select>
       </div>
 
       {/* Notes */}
