@@ -16,13 +16,27 @@ export function usePlanner(userId) {
     if (!userId) return;
 
     const docRef = doc(db, 'planners', userId);
+
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      // 🛑 TRAVA DE SEGURANÇA CONTRA PERDA DE DADOS 🛑
+      // Se a resposta veio do cache (offline) e diz que o quadro não existe,
+      // nós NÃO sobrescrevemos. Apenas esperamos a internet voltar.
+      if (!docSnap.exists() && docSnap.metadata.fromCache) {
+        console.warn("Rede instável: Lendo do cache vazio. Aguardando servidor...");
+        return; 
+      }
+
       if (docSnap.exists()) {
         setState(docSnap.data());
+        setLoading(false);
       } else {
-        setDoc(docRef, INITIAL);
+        // Agora sim, temos certeza (veio do servidor real) que é o primeiro acesso
+        setDoc(docRef, INITIAL).catch(err => console.error("Erro ao criar:", err));
+        setState(INITIAL);
+        setLoading(false);
       }
-      setLoading(false);
+    }, (error) => {
+      console.error("Erro na sincronização:", error);
     });
 
     return () => unsubscribe();

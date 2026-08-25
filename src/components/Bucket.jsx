@@ -5,8 +5,14 @@ export default function Bucket({ bucket, selectedTask, setSelectedTask, toggleTa
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
+  
+  // NOVO: Estado para controlar a gaveta de concluídas
+  const [showCompleted, setShowCompleted] = useState(false);
 
-  const doneTasks = bucket.tasks.filter(t => t.done).length;
+  // SEPARAÇÃO DAS TAREFAS
+  const activeTasks = bucket.tasks.filter(t => !t.done);
+  const completedTasks = bucket.tasks.filter(t => t.done);
+  const doneTasks = completedTasks.length;
 
   const handleCreateTask = () => {
     createTask(bucket.id, newTaskTitle);
@@ -62,9 +68,11 @@ export default function Bucket({ bucket, selectedTask, setSelectedTask, toggleTa
         </div>
       )}
 
-      {/* Task cards */}
+      {/* Task cards e Áreas Interativas */}
       <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
-        {bucket.tasks.map(task => (
+        
+        {/* TAREFAS ATIVAS */}
+        {activeTasks.map(task => (
           <TaskCard 
             key={task.id} 
             task={task} 
@@ -72,7 +80,7 @@ export default function Bucket({ bucket, selectedTask, setSelectedTask, toggleTa
             selectedTask={selectedTask} 
             setSelectedTask={setSelectedTask} 
             toggleTask={toggleTask} 
-            toggleSubtask={toggleSubtask} /* <--- PONTE 3: REPASSOU PRO TASKCARD */
+            toggleSubtask={toggleSubtask} 
           />
         ))}
 
@@ -92,6 +100,39 @@ export default function Bucket({ bucket, selectedTask, setSelectedTask, toggleTa
             <i className="ti ti-plus" style={{ fontSize: '14px' }} aria-hidden="true" /> Adicionar tarefa
           </button>
         )}
+
+        {/* GAVETA DE TAREFAS CONCLUÍDAS */}
+        {completedTasks.length > 0 && (
+          <div style={{ marginTop: '8px', borderTop: '0.5px solid var(--color-border-secondary)', paddingTop: '8px' }}>
+            <button 
+              onClick={() => setShowCompleted(!showCompleted)}
+              style={{ width: '100%', padding: '6px 4px', background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className={`ti ti-chevron-${showCompleted ? 'down' : 'right'}`} style={{ fontSize: '14px' }} />
+                Tarefas concluídas
+              </div>
+              <span>{completedTasks.length}</span>
+            </button>
+            
+            {showCompleted && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginTop: '7px' }}>
+                {completedTasks.map(task => (
+                  <TaskCard 
+                    key={task.id} 
+                    task={task} 
+                    bucket={bucket} 
+                    selectedTask={selectedTask} 
+                    setSelectedTask={setSelectedTask} 
+                    toggleTask={toggleTask} 
+                    toggleSubtask={toggleSubtask} 
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        
       </div>
     </div>
   );
