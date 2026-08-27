@@ -11,35 +11,43 @@ export function usePlanner(userId) {
   const [state, setState] = useState(INITIAL);
   const [loading, setLoading] = useState(true);
   
-  // NOVO: Cadeado inquebrável que impede salvamentos acidentais.
-  // Ele sobrevive a recarregamentos do React sem piscar.
   const isSynced = useRef(false); 
+  // NOVO: Referência síncrona do estado para evitar dependência do 'prev' do setState
+  const stateRef = useRef(state); 
+
+  // Mantém a referência de estado sempre atualizada
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      isSynced.current = false; // Essencial para trancar a gaveta ao fazer logout
+      return;
+    }
 
     const docRef = doc(db, 'planners', userId);
 
-    // NOVO: A flag { includeMetadataChanges: true } é obrigatória para ler o fromCache corretamente
     const unsubscribe = onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
       
       if (!docSnap.exists()) {
-        // Trava 1: Se o documento não existe, mas veio do cache (offline), aborta.
         if (docSnap.metadata.fromCache) {
           console.warn("Rede instável: Lendo do cache vazio. Aguardando servidor...");
           return; 
         }
         
-        // Se chegou aqui, O SERVIDOR ONLINE confirmou que a gaveta está vazia.
         setDoc(docRef, INITIAL).catch(err => console.error("Erro ao criar:", err));
         setState(INITIAL);
         setLoading(false);
-        isSynced.current = true; // Abre o cadeado
+        isSynced.current = true; 
       } else {
-        // Carregou os dados reais do servidor
-        setState(docSnap.data());
+        // CORREÇÃO CRÍTICA: Só aceita dados do snapshot se NÃO for um reflexo
+        // da nossa própria gravação local inacabada.
+        if (!docSnap.metadata.hasPendingWrites) {
+          setState(docSnap.data());
+        }
         setLoading(false);
-        isSynced.current = true; // Abre o cadeado
+        isSynced.current = true; 
       }
     }, (error) => {
       console.error("Erro na sincronização:", error);
@@ -49,19 +57,21 @@ export function usePlanner(userId) {
   }, [userId]);
 
   const updateData = (recipe) => {
-    // NOVO (Trava 2): Se a tela tentar salvar algo antes da confirmação do servidor, o código barra.
     if (!isSynced.current) {
       console.error("Bloqueado: Tentativa de sobrescrever dados antes da sincronização online.");
       return;
     }
 
-    setState(prev => {
-      const newState = recipe(prev);
-      if (userId) {
-        setDoc(doc(db, 'planners', userId), newState).catch(err => console.error("Erro Firebase:", err));
-      }
-      return newState;
-    });
+    // CORREÇÃO CRÍTICA: Calculamos o estado primeiro, atualizamos o React, 
+    // e disparamos o Firebase do lado de fora de forma pura.
+    const newState = recipe(stateRef.current);
+    
+    setState(newState);
+    stateRef.current = newState; // Atualiza o ref imediatamente para ações em cadeia
+
+    if (userId) {
+      setDoc(doc(db, 'planners', userId), newState).catch(err => console.error("Erro Firebase:", err));
+    }
   };
 
   const activePlan = state.plans?.find(p => p.id === state.activePlanId) || state.plans?.[0];
