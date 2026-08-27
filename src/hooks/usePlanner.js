@@ -35,8 +35,6 @@ export function usePlanner(userId) {
           console.warn("Rede instável: Lendo do cache vazio. Aguardando servidor...");
           return; 
         }
-        
-        setDoc(docRef, INITIAL).catch(err => console.error("Erro ao criar:", err));
         setState(INITIAL);
         setLoading(false);
         isSynced.current = true; 
