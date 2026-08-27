@@ -43,6 +43,7 @@ O **Task Planner Pro** é uma aplicação Full-Stack moderna de gerenciamento de
 
 * **(1.2) Proteção de Dados Offline (Cache Lock):** Implementação de uma trava de segurança robusta no Firebase. Se a aplicação for iniciada em um ambiente sem internet ou com rede instável, o sistema detecta que a leitura está sendo feita via cache (`fromCache`) e bloqueia qualquer tentativa de sobrescrita de dados vazios, garantindo que o seu progresso nunca seja perdido.
 * **(1.2) Smart UI: Gaveta de Tarefas Concluídas:** Aprimoramento da interface para manter o foco na produtividade. Quando as tarefas são marcadas como "Concluídas", elas são dinamicamente separadas da lista principal e agrupadas em um menu retrátil (estilo sanfona) no final de cada Bucket. Isso mantém o quadro Kanban limpo, mostrando apenas o que precisa ser feito, mas mantendo o histórico acessível a um clique.
+* **(1.3) Fix: Correção de bugs que causam a perda de dados recentes escritos**
 
 ---
 

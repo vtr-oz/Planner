@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
-import { INITIAL } from '../data/initialData'; // <--- Removemos o genId antigo daqui
+import { useState, useEffect, useRef } from 'react';
+import { INITIAL } from '../data/initialData';
 import { db } from '../config/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
-// NOVO: Gerador de IDs robusto (Combina o milissegundo atual com caracteres aleatórios)
 const generateId = () => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
 };
@@ -11,29 +10,36 @@ const generateId = () => {
 export function usePlanner(userId) {
   const [state, setState] = useState(INITIAL);
   const [loading, setLoading] = useState(true);
+  
+  // NOVO: Cadeado inquebrável que impede salvamentos acidentais.
+  // Ele sobrevive a recarregamentos do React sem piscar.
+  const isSynced = useRef(false); 
 
   useEffect(() => {
     if (!userId) return;
 
     const docRef = doc(db, 'planners', userId);
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      // 🛑 TRAVA DE SEGURANÇA CONTRA PERDA DE DADOS 🛑
-      // Se a resposta veio do cache (offline) e diz que o quadro não existe,
-      // nós NÃO sobrescrevemos. Apenas esperamos a internet voltar.
-      if (!docSnap.exists() && docSnap.metadata.fromCache) {
-        console.warn("Rede instável: Lendo do cache vazio. Aguardando servidor...");
-        return; 
-      }
-
-      if (docSnap.exists()) {
-        setState(docSnap.data());
-        setLoading(false);
-      } else {
-        // Agora sim, temos certeza (veio do servidor real) que é o primeiro acesso
+    // NOVO: A flag { includeMetadataChanges: true } é obrigatória para ler o fromCache corretamente
+    const unsubscribe = onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
+      
+      if (!docSnap.exists()) {
+        // Trava 1: Se o documento não existe, mas veio do cache (offline), aborta.
+        if (docSnap.metadata.fromCache) {
+          console.warn("Rede instável: Lendo do cache vazio. Aguardando servidor...");
+          return; 
+        }
+        
+        // Se chegou aqui, O SERVIDOR ONLINE confirmou que a gaveta está vazia.
         setDoc(docRef, INITIAL).catch(err => console.error("Erro ao criar:", err));
         setState(INITIAL);
         setLoading(false);
+        isSynced.current = true; // Abre o cadeado
+      } else {
+        // Carregou os dados reais do servidor
+        setState(docSnap.data());
+        setLoading(false);
+        isSynced.current = true; // Abre o cadeado
       }
     }, (error) => {
       console.error("Erro na sincronização:", error);
@@ -43,6 +49,12 @@ export function usePlanner(userId) {
   }, [userId]);
 
   const updateData = (recipe) => {
+    // NOVO (Trava 2): Se a tela tentar salvar algo antes da confirmação do servidor, o código barra.
+    if (!isSynced.current) {
+      console.error("Bloqueado: Tentativa de sobrescrever dados antes da sincronização online.");
+      return;
+    }
+
     setState(prev => {
       const newState = recipe(prev);
       if (userId) {
@@ -160,8 +172,6 @@ export function usePlanner(userId) {
       const targetIdStr = String(targetBucketId);
       const taskIdStr = String(taskId);
 
-      // CORREÇÃO CRÍTICA: Se a tarefa for solta na mesma coluna de onde saiu, cancela a ação.
-      // Isso impede que a tarefa seja deletada acidentalmente pelo filtro abaixo.
       if (sourceIdStr === targetIdStr) return p;
 
       const sourceBucket = p.buckets.find(b => String(b.id) === sourceIdStr);
